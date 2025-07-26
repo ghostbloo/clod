@@ -1,0 +1,8 @@
+__pycache__/
+.DS_Store
+.mypy_cache/
+.ruff_cache/
+.venv/
+.env
+**/*.local
+**/*.local.*

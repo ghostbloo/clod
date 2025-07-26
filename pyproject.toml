@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clod"
+version = "1.0.0"
+description = "Claude utilities and hacks"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cchooks>=0.1.0",
+    "click>=8.0.0",
+    "pydantic>=2.11.7",
+    "textual>=0.82.0",
+]
+
+[project.scripts]
+clod = "clod.cli:main"
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.0",
+    "ruff>=0.12.4",
+]
+
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "ANN",  # flake8-annotations
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific rules
+    "T10",  # flake8-print (useful for TUI debugging)
+    "PTH",  # flake8-use-pathlib
+]
+
+ignore = [
+    "ANN101",  # Missing type annotation for `self`
+    "ANN102",  # Missing type annotation for `cls`
+    "T10",     # Allow print statements for now (useful for debugging TUI)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
