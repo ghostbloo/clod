@@ -3,28 +3,10 @@
 import json
 import re
 import subprocess
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
-@dataclass
-class ChatMessage:
-    """Represents a chat message from Claude Desktop."""
-    conversation_id: str
-    text: str
-    timestamp: datetime | None = None
-    message_type: str = "user"  # user or assistant
-    is_draft: bool = False
-
-
-@dataclass
-class Conversation:
-    """Represents a conversation thread."""
-    id: str
-    messages: list[ChatMessage]
-    last_activity: datetime | None = None
+from .models import ChatMessage, Conversation
 
 
 class ClaudeDesktopParser:
@@ -92,7 +74,8 @@ class ClaudeDesktopParser:
                             try:
                                 data = json.loads(json_str)
                                 text = self._extract_text_from_doc(data)
-                                if text and len(text) > 3:  # Filter out very short messages
+                                # Filter out very short messages
+                                if text and len(text) > 3:
                                     messages.append(ChatMessage(
                                         conversation_id=conversation_id,
                                         text=text,
@@ -175,7 +158,9 @@ class ClaudeDesktopParser:
 
         return conversations
 
-    def search_messages(self, query: str, case_sensitive: bool = False) -> list[ChatMessage]:
+    def search_messages(
+        self, query: str, case_sensitive: bool = False
+    ) -> list[ChatMessage]:
         """Search for messages containing the query."""
         messages = self.get_all_messages()
         results = []

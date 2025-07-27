@@ -89,7 +89,7 @@ class SoundEffectsManager:
         "PreCompact"
     ]
 
-    def __init__(self, settings_path: Path | None = None, sounds_path: Path | None = None):
+    def __init__(self, settings_path: Path | None = None, sounds_path: Path | None = None) -> None:
         self.settings_path = settings_path or Path.home() / ".claude" / "settings.json"
         self.sounds_path = sounds_path or Path.home() / ".claude" / "sounds"
 
@@ -258,21 +258,21 @@ class SoundEffectsTUI(App):
     Screen {
         layout: horizontal;
     }
-    
+
     .left-panel {
         width: 40%;
         height: 100%;
         border: solid $primary;
         margin: 1;
     }
-    
+
     .right-panel {
         width: 60%;
         height: 100%;
         border: solid $primary;
         margin: 1;
     }
-    
+
     .panel-title {
         background: $primary;
         color: $text;
@@ -280,11 +280,11 @@ class SoundEffectsTUI(App):
         text-align: center;
         dock: top;
     }
-    
+
     ListView {
         height: 1fr;
     }
-    
+
     .status {
         height: 3;
         background: $surface;

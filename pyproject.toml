@@ -8,8 +8,25 @@ version = "1.0.0"
 description = "Claude utilities and hacks"
 readme = "README.md"
 requires-python = ">=3.13"
+authors = [
+    {name = "ghostbloo", email = "ghostbloo@users.noreply.github.com"}
+]
+license = {text = "MIT"}
+homepage = "https://github.com/ghostbloo/clod"
+repository = "https://github.com/ghostbloo/clod"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+keywords = ["claude", "ai", "cli", "productivity", "tmux"]
 dependencies = [
     "cchooks>=0.1.0",
+    "claude-code-sdk>=0.0.17",
     "click>=8.0.0",
     "pydantic>=2.11.7",
     "textual>=0.82.0",

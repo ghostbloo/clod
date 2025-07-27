@@ -9,13 +9,13 @@ from pathlib import Path
 class TmuxController:
     """Control tmux sessions for Claude workspace management."""
 
-    def __init__(self, session_name: str = "claude-workspace"):
+    def __init__(self, session_name: str = "claude-workspace") -> None:
         self.session_name = session_name
         self.target_pane = f"{session_name}:cc.1"
 
     def _run_tmux(self, *args: str) -> subprocess.CompletedProcess:
         """Run a tmux command and return the result."""
-        return subprocess.run(["tmux"] + list(args), capture_output=True, text=True)
+        return subprocess.run(["tmux", *list(args)], capture_output=True, text=True)
 
     def has_session(self) -> bool:
         """Check if the Claude session exists."""

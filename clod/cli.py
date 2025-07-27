@@ -18,13 +18,17 @@ def main() -> None:
     pass
 
 
-@main.command(context_settings=dict(
-    ignore_unknown_options=True,
-    allow_extra_args=True,
-    allow_interspersed_args=False,
-    help_option_names=[]  # Disable Click's help handling
-))
-@click.option("--safe", is_flag=True, help="Run claude without --dangerously-skip-permissions")
+@main.command(context_settings={
+    "ignore_unknown_options": True,
+    "allow_extra_args": True,
+    "allow_interspersed_args": False,
+    "help_option_names": []  # Disable Click's help handling
+})
+@click.option(
+    "--safe",
+    is_flag=True,
+    help="Run claude without --dangerously-skip-permissions",
+)
 @click.pass_context
 def code(ctx: click.Context, safe: bool) -> None:
     """Alias for 'claude --dangerously-skip-permissions'."""
@@ -52,7 +56,11 @@ def code(ctx: click.Context, safe: bool) -> None:
                 break
 
     if not claude_path:
-        click.echo("Error: claude command not found. Please ensure Claude Code CLI is installed.", err=True)
+        click.echo(
+            "Error: claude command not found. "
+            "Please ensure Claude Code CLI is installed.",
+            err=True,
+        )
         sys.exit(1)
 
     cmd = [claude_path]
@@ -76,7 +84,7 @@ def hooks() -> None:
 
 @main.group()
 def desktop() -> None:
-    """Claude Desktop chat history commands."""
+    """Claude Desktop integration commands (chat history, MCP server management)."""
     pass
 
 
@@ -170,7 +178,13 @@ def send_input(text: str, session: str) -> None:
 
 
 @tmux.command()
-@click.option("--mode", "-m", default="standard", type=click.Choice(["standard", "vim"]), help="Submission mode")
+@click.option(
+    "--mode",
+    "-m",
+    default="standard",
+    type=click.Choice(["standard", "vim"]),
+    help="Submission mode",
+)
 @click.option("--session", "-s", default="claude-repl", help="Session name")
 def submit(mode: str, session: str) -> None:
     """Submit current input with different submission modes."""
@@ -222,7 +236,10 @@ def list() -> None:
 
     for i, hook in enumerate(hooks):
         status = "✓" if hook["enabled"] else "✗"
-        click.echo(f"{i:2d}. {status} {hook['event']:<20} {hook['matcher']:<15} {hook['command']}")
+        click.echo(
+            f"{i:2d}. {status} {hook['event']:<20} "
+            f"{hook['matcher']:<15} {hook['command']}"
+        )
 
 
 @hooks.command()
@@ -232,7 +249,14 @@ def list() -> None:
 @click.option("--script", "-s", help="Path to existing script")
 @click.option("--template", "-t", is_flag=True, help="Create cchooks Python template")
 @click.option("--name", "-n", help="Hook name (for templates)")
-def add(hook_type: str, matcher: str, command: str | None, script: str | None, template: bool, name: str | None) -> None:
+def add(
+    hook_type: str,
+    matcher: str,
+    command: str | None,
+    script: str | None,
+    template: bool,
+    name: str | None,
+) -> None:
     """Add a new hook."""
     manager = HookManager()
 
@@ -296,7 +320,7 @@ def edit(identifier: str) -> None:
             # Extract script path from command if it's a Python script
             if command.startswith("python "):
                 script_path = command.split(" ", 1)[1]
-                if os.path.exists(script_path):
+                if Path(script_path).exists():
                     editor = os.environ.get("EDITOR", "nano")
                     subprocess.run([editor, script_path])
                     return
@@ -332,7 +356,11 @@ def list_desktop(limit: int, conversation: str | None) -> None:
 
     for i, msg in enumerate(messages, 1):
         status = "📝" if msg.is_draft else "💬"
-        conv_short = msg.conversation_id[:8] if msg.conversation_id != "unknown" else "unknown"
+        conv_short = (
+            msg.conversation_id[:8]
+            if msg.conversation_id != "unknown"
+            else "unknown"
+        )
         click.echo(f"{i:2d}. {status} [{conv_short}] {msg.text}")
 
 
@@ -352,11 +380,18 @@ def search(query: str, case_sensitive: bool, limit: int) -> None:
     # Limit results
     if len(results) > limit:
         results = results[:limit]
-        click.echo(f"Showing first {limit} of {len(parser.search_messages(query, case_sensitive))} results:")
+        click.echo(
+            f"Showing first {limit} of "
+            f"{len(parser.search_messages(query, case_sensitive))} results:"
+        )
 
     for i, msg in enumerate(results, 1):
         status = "📝" if msg.is_draft else "💬"
-        conv_short = msg.conversation_id[:8] if msg.conversation_id != "unknown" else "unknown"
+        conv_short = (
+            msg.conversation_id[:8]
+            if msg.conversation_id != "unknown"
+            else "unknown"
+        )
 
         # Highlight the search term
         text = msg.text
@@ -388,7 +423,13 @@ def conversations() -> None:
 
 
 @desktop.command()
-@click.option("--format", "-f", type=click.Choice(["text", "json"]), default="text", help="Output format")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["text", "json"]),
+    default="text",
+    help="Output format",
+)
 def export(format: str) -> None:
     """Export all chat messages."""
     parser = ClaudeDesktopParser()
@@ -434,7 +475,7 @@ def mcp_tail(ctx: click.Context, server_name: str) -> None:
     log_file = log_dir / f"mcp-server-{server_name}.log"
 
     # Build tail command with all extra args
-    tail_cmd = ["tail"] + ctx.args + [str(log_file)]
+    tail_cmd = ["tail", *ctx.args, str(log_file)]
 
     # Execute tail directly, replacing the current process
     try:
@@ -460,7 +501,7 @@ def logs(server_name: str, lines: int) -> None:
         return
 
     try:
-        with open(log_file) as f:
+        with log_file.open() as f:
             all_lines = f.readlines()
             recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
             for line in recent_lines:
@@ -474,14 +515,16 @@ def list_servers() -> None:
     """List MCP servers configured in Claude Desktop."""
     import json
 
-    config_path = Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
+    config_path = (
+        Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
+    )
 
     if not config_path.exists():
         click.echo("Claude Desktop config not found")
         return
 
     try:
-        with open(config_path) as f:
+        with config_path.open() as f:
             config = json.load(f)
 
         mcp_servers = config.get("mcpServers", {})
@@ -538,7 +581,10 @@ def mcp_status() -> None:
             recent = (time.time() - stat.st_mtime) < 3600
             status_indicator = "🟢" if recent else "🔴"
 
-            click.echo(f"  {status_indicator} {server_name}: {size} bytes, modified {modified.strftime('%Y-%m-%d %H:%M:%S')}")
+            click.echo(
+                f"  {status_indicator} {server_name}: {size} bytes, "
+                f"modified {modified.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
         except OSError:
             click.echo(f"  ❓ {server_name}: Unable to read file stats")
 
@@ -549,7 +595,9 @@ def mcp_status() -> None:
 @click.argument("command")
 @click.argument("args", nargs=-1)
 @click.option("--env", "-e", multiple=True, help="Environment variable (KEY=VALUE)")
-def mcp_add(name: str, command: str, args: tuple[str, ...], env: tuple[str, ...]) -> None:
+def mcp_add(
+    name: str, command: str, args: tuple[str, ...], env: tuple[str, ...]
+) -> None:
     """Add an MCP server to Claude Desktop config."""
     manager = ClaudeDesktopMcpManager()
 
@@ -560,7 +608,10 @@ def mcp_add(name: str, command: str, args: tuple[str, ...], env: tuple[str, ...]
             key, value = env_var.split("=", 1)
             env_dict[key] = value
         else:
-            click.echo(f"Invalid environment variable format: {env_var} (use KEY=VALUE)", err=True)
+            click.echo(
+                f"Invalid environment variable format: {env_var} (use KEY=VALUE)",
+                err=True,
+            )
             return
 
     try:
@@ -570,7 +621,9 @@ def mcp_add(name: str, command: str, args: tuple[str, ...], env: tuple[str, ...]
         if args:
             click.echo(f"  Args: {' '.join(args)}")
         if env_dict:
-            click.echo(f"  Environment: {', '.join(f'{k}={v}' for k, v in env_dict.items())}")
+            click.echo(
+                f"  Environment: {', '.join(f'{k}={v}' for k, v in env_dict.items())}"
+            )
     except Exception as e:
         click.echo(f"✗ Error adding server: {e}", err=True)
 
@@ -600,13 +653,21 @@ def mcp_get(name: str) -> None:
 
     click.echo(f"{name}:")
     click.echo(f"  Type: {server.type}")
-    click.echo(f"  Command: {server.command}")
-    if server.args:
-        click.echo(f"  Args: {' '.join(server.args)}")
-    if server.env:
-        click.echo("  Environment:")
-        for key, value in server.env.items():
-            click.echo(f"    {key}={value}")
+
+    if server.type == "stdio":
+        click.echo(f"  Command: {server.command}")
+        if server.args:
+            click.echo(f"  Args: {' '.join(server.args)}")
+        if server.env:
+            click.echo("  Environment:")
+            for key, value in server.env.items():
+                click.echo(f"    {key}={value}")
+    elif server.type in ("sse", "http"):
+        click.echo(f"  URL: {server.url}")
+        if server.headers:
+            click.echo("  Headers:")
+            for key, value in server.headers.items():
+                click.echo(f"    {key}: {value}")
 
 
 @mcp.command("enable")
@@ -651,7 +712,7 @@ def list_sfx() -> None:
         return
 
     click.echo("Current sound effect mappings:")
-    for key, mapping in mappings.items():
+    for _key, mapping in mappings.items():
         hook_type = mapping["hook_type"]
         matcher = mapping["matcher"] or "(empty)"
         sound = mapping["sound"]
@@ -669,7 +730,10 @@ def set(hook_type: str, matcher: str, sound_file: str) -> None:
     if manager.set_sound_mapping(hook_type, matcher, sound_file):
         click.echo(f"✓ Set {sound_file} for {hook_type} | {matcher}")
     else:
-        click.echo(f"✗ Failed to set sound effect. Check that {sound_file} exists in ~/.claude/sounds/")
+        click.echo(
+            f"✗ Failed to set sound effect. "
+            f"Check that {sound_file} exists in ~/.claude/sounds/"
+        )
 
 
 @sfx.command("remove")

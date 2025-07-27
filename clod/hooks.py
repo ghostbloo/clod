@@ -21,7 +21,7 @@ class HookManager:
         "pre-compact"
     ]
 
-    def __init__(self, settings_path: Path | None = None):
+    def __init__(self, settings_path: Path | None = None) -> None:
         self.settings_path = settings_path or Path.home() / ".claude" / "settings.json"
         self.hooks_dir = Path.home() / ".claude" / "hooks"
         self.hooks_dir.mkdir(parents=True, exist_ok=True)
@@ -118,7 +118,7 @@ class HookManager:
     def remove_hook(self, identifier: str) -> bool:
         """Remove a hook by index or identifier."""
         settings = self._load_settings()
-        hooks_config = settings.get("hooks", {})
+        settings.get("hooks", {})
 
         try:
             # Try to parse as index
