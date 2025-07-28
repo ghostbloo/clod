@@ -3,7 +3,7 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import click
 
@@ -11,14 +11,14 @@ import click
 class HookManager:
     """Manages Claude Code hooks."""
 
-    HOOK_TYPES = [
+    HOOK_TYPES: ClassVar[list[str]] = [
         "pre-tool-use",
         "post-tool-use",
         "notification",
         "stop",
         "subagent-stop",
         "user-prompt-submit",
-        "pre-compact"
+        "pre-compact",
     ]
 
     def __init__(self, settings_path: Path | None = None) -> None:
@@ -32,7 +32,7 @@ class HookManager:
             return {"hooks": {}}
 
         try:
-            with open(self.settings_path) as f:
+            with self.settings_path.open() as f:
                 data: dict[str, Any] = json.load(f)
             return data
         except (OSError, json.JSONDecodeError):
@@ -42,7 +42,7 @@ class HookManager:
     def _save_settings(self, settings: dict[str, Any]) -> None:
         """Save Claude Code settings."""
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.settings_path, "w") as f:
+        with self.settings_path.open("w") as f:
             json.dump(settings, f, indent=2)
 
     def list_hooks(self) -> list[dict[str, Any]]:
@@ -54,22 +54,31 @@ class HookManager:
             for matcher_config in matchers:
                 matcher = matcher_config.get("matcher", "*")
                 for hook in matcher_config.get("hooks", []):
-                    hooks.append({
-                        "event": event_name,
-                        "matcher": matcher,
-                        "type": hook.get("type", "command"),
-                        "command": hook.get("command", ""),
-                        "enabled": hook.get("enabled", True)
-                    })
+                    hooks.append(
+                        {
+                            "event": event_name,
+                            "matcher": matcher,
+                            "type": hook.get("type", "command"),
+                            "command": hook.get("command", ""),
+                            "enabled": hook.get("enabled", True),
+                        }
+                    )
 
         return hooks
 
-    def add_hook(self, hook_type: str, matcher: str, command: str | None = None,
-                 script_path: str | None = None, template: bool = False,
-                 name: str | None = None) -> str:
+    def add_hook(
+        self,
+        hook_type: str,
+        matcher: str,
+        command: str | None = None,
+        script_path: str | None = None,
+        template: bool = False,
+        name: str | None = None,
+    ) -> str:
         """Add a new hook."""
         if hook_type not in self.HOOK_TYPES:
-            raise ValueError(f"Invalid hook type. Must be one of: {', '.join(self.HOOK_TYPES)}")
+            msg = f"Invalid hook type. Must be one of: {', '.join(self.HOOK_TYPES)}"
+            raise ValueError(msg)
 
         settings = self._load_settings()
         hooks_config = settings.setdefault("hooks", {})
@@ -80,7 +89,8 @@ class HookManager:
         if template:
             # Create cchooks Python template
             if not name:
-                name = f"{hook_type.replace('-', '_')}_{len(hooks_config.get(event_name, []))}"
+                event_hooks_count = len(hooks_config.get(event_name, []))
+                name = f"{hook_type.replace('-', '_')}_{event_hooks_count}"
 
             script_path = self._create_template(hook_type, name)
             command = f"python {script_path}"
@@ -104,11 +114,7 @@ class HookManager:
             matcher_config = {"matcher": matcher, "hooks": []}
             event_hooks.append(matcher_config)
 
-        hook_config = {
-            "type": "command",
-            "command": final_command,
-            "enabled": True
-        }
+        hook_config = {"type": "command", "command": final_command, "enabled": True}
 
         matcher_config["hooks"].append(hook_config)
         self._save_settings(settings)
@@ -133,7 +139,9 @@ class HookManager:
 
         return False
 
-    def _remove_hook_by_details(self, settings: dict[str, Any], hook: dict[str, Any]) -> bool:
+    def _remove_hook_by_details(
+        self, settings: dict[str, Any], hook: dict[str, Any]
+    ) -> bool:
         """Remove a specific hook by its details."""
         hooks_config = settings.get("hooks", {})
         event_name = hook["event"]
@@ -158,7 +166,9 @@ class HookManager:
 
         return False
 
-    def run_hook(self, identifier: str, test_input: str | None = None, dry_run: bool = False) -> None:
+    def run_hook(
+        self, identifier: str, test_input: str | None = None, dry_run: bool = False
+    ) -> None:
         """Run/test a hook."""
         hooks = self.list_hooks()
 
@@ -181,7 +191,7 @@ class HookManager:
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True
+                    text=True,
                 )
 
                 stdout, stderr = proc.communicate(input=test_input)
@@ -207,14 +217,14 @@ class HookManager:
             "stop": "StopContext",
             "subagent-stop": "SubagentStopContext",
             "user-prompt-submit": "UserPromptSubmitContext",
-            "pre-compact": "PreCompactContext"
+            "pre-compact": "PreCompactContext",
         }
 
         context_class = context_map.get(hook_type, "PreToolUseContext")
 
         template = f'''#!/usr/bin/env python3
 """
-{name.replace('_', ' ').title()} hook for Claude Code.
+{name.replace("_", " ").title()} hook for Claude Code.
 Generated by clod hooks.
 """
 
@@ -234,7 +244,7 @@ assert isinstance(c, {context_class})
 c.output.exit_success()
 '''
 
-        with open(script_path, "w") as f:
+        with script_path.open("w") as f:
             f.write(template)
 
         # Make executable
@@ -245,5 +255,5 @@ c.output.exit_success()
     def _normalize_event_name(self, hook_type: str) -> str:
         """Convert hook type to Claude Code event name format."""
         # Convert kebab-case to PascalCase
-        parts = hook_type.split('-')
-        return ''.join(word.capitalize() for word in parts)
+        parts = hook_type.split("-")
+        return "".join(word.capitalize() for word in parts)

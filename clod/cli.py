@@ -17,12 +17,14 @@ def main() -> None:
     pass
 
 
-@main.command(context_settings={
-    "ignore_unknown_options": True,
-    "allow_extra_args": True,
-    "allow_interspersed_args": False,
-    "help_option_names": []  # Disable Click's help handling
-})
+@main.command(
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+        "allow_interspersed_args": False,
+        "help_option_names": [],  # Disable Click's help handling
+    }
+)
 @click.option(
     "--safe",
     is_flag=True,
@@ -266,7 +268,7 @@ def add(
             command=command,
             script_path=script,
             template=template,
-            name=name
+            name=name,
         )
 
         if template:
@@ -337,10 +339,13 @@ def mcp() -> None:
     pass
 
 
-@mcp.command("tail", context_settings={
-    "ignore_unknown_options": True,
-    "allow_extra_args": True,
-})
+@mcp.command(
+    "tail",
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    },
+)
 @click.argument("server_name")
 @click.pass_context
 def mcp_tail(ctx: click.Context, server_name: str) -> None:
@@ -457,6 +462,7 @@ def mcp_status() -> None:
 
             # Check if log has recent activity (within last hour)
             import time
+
             recent = (time.time() - stat.st_mtime) < 3600
             status_indicator = "🟢" if recent else "🔴"
 

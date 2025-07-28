@@ -4,7 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -30,7 +30,7 @@ class SoundPlayer:
                 self.current_process = subprocess.Popen(
                     ["afplay", str(sound_path)],
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stderr=subprocess.DEVNULL,
                 )
             elif sys.platform.startswith("linux"):
                 # Linux - try common players
@@ -39,7 +39,7 @@ class SoundPlayer:
                         self.current_process = subprocess.Popen(
                             [player, str(sound_path)],
                             stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL
+                            stderr=subprocess.DEVNULL,
                         )
                         break
                 else:
@@ -47,7 +47,11 @@ class SoundPlayer:
             elif sys.platform == "win32":
                 # Windows
                 import winsound
-                winsound.PlaySound(str(sound_path), winsound.SND_FILENAME | winsound.SND_ASYNC)
+
+                winsound.PlaySound(
+                    str(sound_path),
+                    winsound.SND_FILENAME | winsound.SND_ASYNC,
+                )
                 return True
             else:
                 return False
@@ -65,7 +69,7 @@ class SoundPlayer:
                 self.current_process.wait(timeout=1)
             except subprocess.TimeoutExpired:
                 self.current_process.kill()
-            except:
+            except Exception:
                 pass
             finally:
                 self.current_process = None
@@ -73,23 +77,26 @@ class SoundPlayer:
     def _command_exists(self, command: str) -> bool:
         """Check if a command exists in PATH."""
         import shutil
+
         return shutil.which(command) is not None
 
 
 class SoundEffectsManager:
     """Manages Claude Code sound effects configuration."""
 
-    HOOK_TYPES = [
+    HOOK_TYPES: ClassVar[list[str]] = [
         "PreToolUse",
         "PostToolUse",
         "Notification",
         "Stop",
         "SubagentStop",
         "UserPromptSubmit",
-        "PreCompact"
+        "PreCompact",
     ]
 
-    def __init__(self, settings_path: Path | None = None, sounds_path: Path | None = None) -> None:
+    def __init__(
+        self, settings_path: Path | None = None, sounds_path: Path | None = None
+    ) -> None:
         self.settings_path = settings_path or Path.home() / ".claude" / "settings.json"
         self.sounds_path = sounds_path or Path.home() / ".claude" / "sounds"
 
@@ -99,7 +106,7 @@ class SoundEffectsManager:
             return {"hooks": {}}
 
         try:
-            with open(self.settings_path) as f:
+            with self.settings_path.open() as f:
                 data: dict[str, Any] = json.load(f)
                 return data
         except (OSError, json.JSONDecodeError):
@@ -109,7 +116,7 @@ class SoundEffectsManager:
     def _save_settings(self, settings: dict[str, Any]) -> None:
         """Save Claude Code settings."""
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.settings_path, "w") as f:
+        with self.settings_path.open("w") as f:
             json.dump(settings, f, indent=2)
 
     def get_sound_files(self) -> list[Path]:
@@ -137,7 +144,11 @@ class SoundEffectsManager:
                     matcher = matcher_config.get("matcher", "*")
                     for hook in matcher_config.get("hooks", []):
                         command = hook.get("command", "")
-                        if "afplay" in command and ("~/.claude/sounds/" in command or "/.claude/sounds/" in command):
+                        is_sound_command = "afplay" in command and (
+                            "~/.claude/sounds/" in command
+                            or "/.claude/sounds/" in command
+                        )
+                        if is_sound_command:
                             # Extract sound file name from command
                             sound_file = self._extract_sound_from_command(command)
                             if sound_file:
@@ -145,7 +156,7 @@ class SoundEffectsManager:
                                 mappings[key] = {
                                     "hook_type": hook_type,
                                     "matcher": matcher,
-                                    "sound": sound_file
+                                    "sound": sound_file,
                                 }
 
         return mappings
@@ -153,12 +164,13 @@ class SoundEffectsManager:
     def _extract_sound_from_command(self, command: str) -> str | None:
         """Extract sound file name from afplay command."""
         import re
+
         # Handle both quoted and unquoted paths, both relative (~) and absolute
         patterns = [
             r'afplay\s+"?~/.claude/sounds/([^"&]+)"?',
-            r'afplay\s+~/.claude/sounds/([^&\s]+)',
+            r"afplay\s+~/.claude/sounds/([^&\s]+)",
             r'afplay\s+"?/[^"]*/.claude/sounds/([^"&]+)"?',
-            r'afplay\s+/[^&\s]*/.claude/sounds/([^&\s]+)',
+            r"afplay\s+/[^&\s]*/.claude/sounds/([^&\s]+)",
         ]
 
         for pattern in patterns:
@@ -185,7 +197,7 @@ class SoundEffectsManager:
         if " " in sound_file:
             command = f'afplay "{relative_path}" &'
         else:
-            command = f'afplay {relative_path} &'
+            command = f"afplay {relative_path} &"
 
         # Find or create the hook configuration
         event_hooks = hooks_config.setdefault(hook_type, [])
@@ -203,16 +215,16 @@ class SoundEffectsManager:
 
         # Remove any existing sound hooks for this matcher
         hooks = matcher_config.get("hooks", [])
-        matcher_config["hooks"] = [
-            h for h in hooks
-            if not (h.get("command", "").startswith("afplay") and "~/.claude/sounds/" in h.get("command", ""))
-        ]
+        new_hooks = []
+        for h in hooks:
+            cmd = h.get("command", "")
+            is_afplay_sound = cmd.startswith("afplay") and "~/.claude/sounds/" in cmd
+            if not is_afplay_sound:
+                new_hooks.append(h)
+        matcher_config["hooks"] = new_hooks
 
         # Add the new sound hook
-        hook_config = {
-            "type": "command",
-            "command": command
-        }
+        hook_config = {"type": "command", "command": command}
 
         matcher_config["hooks"].append(hook_config)
         self._save_settings(settings)
@@ -232,10 +244,15 @@ class SoundEffectsManager:
                 # Remove sound hooks
                 hooks = matcher_config.get("hooks", [])
                 original_length = len(hooks)
-                matcher_config["hooks"] = [
-                    h for h in hooks
-                    if not (h.get("command", "").startswith("afplay") and ("~/.claude/sounds/" in h.get("command", "") or "/.claude/sounds/" in h.get("command", "")))
-                ]
+                new_hooks = []
+                for h in hooks:
+                    cmd = h.get("command", "")
+                    is_sound_hook = cmd.startswith("afplay") and (
+                        "~/.claude/sounds/" in cmd or "/.claude/sounds/" in cmd
+                    )
+                    if not is_sound_hook:
+                        new_hooks.append(h)
+                matcher_config["hooks"] = new_hooks
 
                 # If we removed something, save and return success
                 if len(matcher_config["hooks"]) < original_length:
@@ -293,7 +310,7 @@ class SoundEffectsTUI(App):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar = [
         ("q", "quit", "Quit"),
         ("space", "select", "Select"),
         ("d", "delete", "Delete mapping"),
@@ -322,7 +339,12 @@ class SoundEffectsTUI(App):
 
         yield Header()
         yield Footer()
-        yield Static("Select a hook on the left, then choose a sound on the right. Press Space to assign.", classes="status", id="status")
+        yield Static(
+            "Select a hook on the left, then choose a sound on the right. "
+            "Press Space to assign.",
+            classes="status",
+            id="status",
+        )
 
     async def on_mount(self) -> None:
         """Initialize the app."""
@@ -346,12 +368,14 @@ class SoundEffectsTUI(App):
                     current_sound = f" -> {self.current_mappings[key]['sound']}"
 
                 display_matcher = matcher or "(empty)"
-                self.hooks_list.append({
-                    "key": key,
-                    "display": f"{hook_type} | {display_matcher}{current_sound}",
-                    "hook_type": hook_type,
-                    "matcher": matcher
-                })
+                self.hooks_list.append(
+                    {
+                        "key": key,
+                        "display": f"{hook_type} | {display_matcher}{current_sound}",
+                        "hook_type": hook_type,
+                        "matcher": matcher,
+                    }
+                )
 
         # Load sound files
         self.sounds_list = [
@@ -407,29 +431,43 @@ class SoundEffectsTUI(App):
         status = self.query_one("#status", Static)
 
         if self.selected_hook and self.selected_sound:
-            hook_data = next((h for h in self.hooks_list if h["key"] == self.selected_hook), None)
+            hook_data = next(
+                (h for h in self.hooks_list if h["key"] == self.selected_hook), None
+            )
             if hook_data:
-                status.update(f"Ready to assign '{self.selected_sound}' to {hook_data['hook_type']} | {hook_data['matcher'] or '(empty)'}. Press Space.")
+                matcher_display = hook_data["matcher"] or "(empty)"
+                msg = (
+                    f"Ready to assign '{self.selected_sound}' to "
+                    f"{hook_data['hook_type']} | {matcher_display}. Press Space."
+                )
+                status.update(msg)
         elif self.selected_hook:
-            status.update(f"Hook selected: {self.selected_hook}. Choose a sound on the right.")
+            status.update(
+                f"Hook selected: {self.selected_hook}. Choose a sound on the right."
+            )
         elif self.selected_sound:
-            status.update(f"Sound selected: {self.selected_sound}. Choose a hook on the left.")
+            status.update(
+                f"Sound selected: {self.selected_sound}. Choose a hook on the left."
+            )
         else:
-            status.update("Select a hook on the left, then choose a sound on the right. Press Space to assign.")
+            status.update(
+                "Select a hook on the left, then choose a sound on the right. "
+                "Press Space to assign."
+            )
 
     async def action_select(self) -> None:
         """Assign selected sound to selected hook."""
         if not self.selected_hook or not self.selected_sound:
             return
 
-        hook_data = next((h for h in self.hooks_list if h["key"] == self.selected_hook), None)
+        hook_data = next(
+            (h for h in self.hooks_list if h["key"] == self.selected_hook), None
+        )
         if not hook_data:
             return
 
         success = self.manager.set_sound_mapping(
-            hook_data["hook_type"],
-            hook_data["matcher"],
-            self.selected_sound
+            hook_data["hook_type"], hook_data["matcher"], self.selected_sound
         )
 
         if success:
@@ -438,7 +476,12 @@ class SoundEffectsTUI(App):
             await self._populate_lists()
 
             status = self.query_one("#status", Static)
-            status.update(f"✓ Assigned '{self.selected_sound}' to {hook_data['hook_type']} | {hook_data['matcher'] or '(empty)'}")
+            matcher_display = hook_data["matcher"] or "(empty)"
+            msg = (
+                f"✓ Assigned '{self.selected_sound}' to "
+                f"{hook_data['hook_type']} | {matcher_display}"
+            )
+            status.update(msg)
         else:
             status = self.query_one("#status", Static)
             status.update("✗ Failed to assign sound")
@@ -448,13 +491,14 @@ class SoundEffectsTUI(App):
         if not self.selected_hook:
             return
 
-        hook_data = next((h for h in self.hooks_list if h["key"] == self.selected_hook), None)
+        hook_data = next(
+            (h for h in self.hooks_list if h["key"] == self.selected_hook), None
+        )
         if not hook_data:
             return
 
         success = self.manager.remove_sound_mapping(
-            hook_data["hook_type"],
-            hook_data["matcher"]
+            hook_data["hook_type"], hook_data["matcher"]
         )
 
         if success:
@@ -463,7 +507,12 @@ class SoundEffectsTUI(App):
             await self._populate_lists()
 
             status = self.query_one("#status", Static)
-            status.update(f"✓ Removed sound mapping for {hook_data['hook_type']} | {hook_data['matcher'] or '(empty)'}")
+            matcher_display = hook_data["matcher"] or "(empty)"
+            msg = (
+                f"✓ Removed sound mapping for "
+                f"{hook_data['hook_type']} | {matcher_display}"
+            )
+            status.update(msg)
         else:
             status = self.query_one("#status", Static)
             status.update("✗ No sound mapping found to remove")

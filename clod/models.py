@@ -9,15 +9,21 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class ClaudeDesktopConfig(BaseModel):
     """Claude Desktop configuration schema."""
-    model_config = ConfigDict(extra='allow')
 
-    mcpServers: dict[str, McpServerConfig] = Field(default_factory=dict)
-    mcpServersDisabled: dict[str, Any] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    mcp_servers: dict[str, McpServerConfig] = Field(
+        default_factory=dict, alias="mcpServers"
+    )
+    mcp_servers_disabled: dict[str, Any] = Field(
+        default_factory=dict, alias="mcpServersDisabled"
+    )
 
 
 # Chat Message Models (converted from dataclasses)
 class ChatMessage(BaseModel):
     """Represents a chat message from Claude Desktop."""
+
     conversation_id: str = Field(min_length=1)
     text: str = Field(min_length=1)
     timestamp: datetime | None = None
@@ -27,6 +33,7 @@ class ChatMessage(BaseModel):
 
 class Conversation(BaseModel):
     """Represents a conversation thread."""
+
     id: str = Field(min_length=1)
     messages: list[ChatMessage] = Field(default_factory=list)
     last_activity: datetime | None = None
@@ -35,6 +42,7 @@ class Conversation(BaseModel):
 # Hook Configuration Models
 class HookConfig(BaseModel):
     """Configuration for a single hook."""
+
     type: Literal["command"] = "command"
     command: str = Field(min_length=1)
     enabled: bool = True
@@ -42,12 +50,14 @@ class HookConfig(BaseModel):
 
 class HookMatcher(BaseModel):
     """Hook matcher configuration."""
+
     matcher: str = Field(min_length=1)
     hooks: list[HookConfig] = Field(default_factory=list)
 
 
 class HooksConfig(BaseModel):
     """Complete hooks configuration."""
-    model_config = ConfigDict(extra='allow')
+
+    model_config = ConfigDict(extra="allow")
 
     hooks: dict[str, list[HookMatcher]] = Field(default_factory=dict)

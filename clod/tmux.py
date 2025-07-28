@@ -30,12 +30,33 @@ class TmuxController:
 
         cwd = str(working_dir or Path.cwd())
 
-        # Create session with first window named "cc" and split vertically (85% top user, 15% bottom Claude)
-        self._run_tmux("new-session", "-d", "-s", self.session_name, "-c", cwd, "-n", "cc")
-        self._run_tmux("split-window", "-v", "-p", "15", "-t", f"{self.session_name}:cc", "-c", cwd)
+        # Create session with first window named "cc" and split vertically
+        # (85% top user, 15% bottom Claude)
+        self._run_tmux(
+            "new-session", "-d", "-s", self.session_name, "-c", cwd, "-n", "cc"
+        )
+        self._run_tmux(
+            "split-window",
+            "-v",
+            "-p",
+            "15",
+            "-t",
+            f"{self.session_name}:cc",
+            "-c",
+            cwd,
+        )
 
         # Create second window named "pm2" running pm2 monitor
-        self._run_tmux("new-window", "-t", self.session_name, "-c", cwd, "-n", "pm2", "pm2 monit")
+        self._run_tmux(
+            "new-window",
+            "-t",
+            self.session_name,
+            "-c",
+            cwd,
+            "-n",
+            "pm2",
+            "pm2 monit",
+        )
 
         # Switch back to the cc window
         self._run_tmux("select-window", "-t", f"{self.session_name}:cc")
@@ -45,9 +66,11 @@ class TmuxController:
         self.send_keys(f"echo 'Claude control pane ready ({timestamp})'")
         self.send_keys(f"echo 'Working directory: {cwd}'")
 
-        print(
-            f"Claude workspace created! Use 'tmux attach -t {self.session_name}' to view"
+        msg = (
+            f"Claude workspace created! "
+            f"Use 'tmux attach -t {self.session_name}' to view"
         )
+        print(msg)
         print("Windows: 'cc' (main workspace), 'pm2' (pm2 monitor)")
         print("Or press prefix+c to switch to it from existing sessions")
         return True
@@ -120,7 +143,9 @@ class TmuxController:
         cwd = str(working_dir or Path.cwd())
 
         # Create session and run the command
-        result = self._run_tmux("new-session", "-d", "-s", self.session_name, "-c", cwd, command)
+        result = self._run_tmux(
+            "new-session", "-d", "-s", self.session_name, "-c", cwd, command
+        )
         if result.returncode == 0:
             print(f"REPL session started with: {command}")
             return True
@@ -152,7 +177,9 @@ class TmuxController:
 
         if mode == "vim":
             # Escape + Enter for vim-style interfaces (sent separately with delay)
-            escape_result = self._run_tmux("send-keys", "-t", self.session_name, "Escape")
+            escape_result = self._run_tmux(
+                "send-keys", "-t", self.session_name, "Escape"
+            )
             if escape_result.returncode != 0:
                 return False
             time.sleep(0.1)  # Small delay for vim interface to process Escape
@@ -173,7 +200,14 @@ class TmuxController:
             return ""
 
         if history_lines > 0:
-            result = self._run_tmux("capture-pane", "-t", self.session_name, "-S", f"-{history_lines}", "-p")
+            result = self._run_tmux(
+                "capture-pane",
+                "-t",
+                self.session_name,
+                "-S",
+                f"-{history_lines}",
+                "-p",
+            )
         else:
             result = self._run_tmux("capture-pane", "-t", self.session_name, "-p")
 
@@ -181,4 +215,6 @@ class TmuxController:
             return ""
 
         output_lines = result.stdout.strip().split("\n")
-        return "\n".join(output_lines[-lines:]) if lines > 0 and output_lines else result.stdout.strip()
+        if lines > 0 and output_lines:
+            return "\n".join(output_lines[-lines:])
+        return str(result.stdout.strip())

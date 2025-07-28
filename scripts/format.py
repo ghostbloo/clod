@@ -11,9 +11,10 @@ def main() -> None:
     subprocess.run(
         "ruff check --fix . && ruff format .",
         shell=True,
-        cwd=Path(__file__).parent.parent
+        cwd=Path(__file__).parent.parent,
     )
     print("✅ Code formatted")
+
 
 if __name__ == "__main__":
     main()

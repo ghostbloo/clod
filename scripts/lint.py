@@ -16,6 +16,7 @@ def run_command(cmd: str, description: str) -> bool:
     print(f"✅ {description} passed")
     return True
 
+
 def main() -> None:
     """Run all linting checks."""
     checks = [
@@ -33,6 +34,7 @@ def main() -> None:
         sys.exit(1)
 
     print("🎉 All checks passed!")
+
 
 if __name__ == "__main__":
     main()
