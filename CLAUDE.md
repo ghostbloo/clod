@@ -10,7 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Setup
 - `uv venv` + `uv sync` + `source .venv/bin/activate`
-- Run lints with `ruff` and `mypy` as you go.
+- Run lints with `uv run python scripts/lint.py`
+- Format code with `uv run python scripts/format.py`
 - Run `clod` for a list of commands.
 
 ## Project Structure

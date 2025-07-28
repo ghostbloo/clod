@@ -3,41 +3,15 @@
 from datetime import datetime
 from typing import Any, Literal
 
+from claude_code_sdk import McpServerConfig
 from pydantic import BaseModel, ConfigDict, Field
-
-
-# MCP Server Models
-class McpStdioServer(BaseModel):
-    """MCP stdio server configuration."""
-    type: Literal["stdio"] = "stdio"
-    command: str
-    args: list[str] = Field(default_factory=list)
-    env: dict[str, str] = Field(default_factory=dict)
-
-
-class McpSseServer(BaseModel):
-    """MCP SSE server configuration."""
-    type: Literal["sse"]
-    url: str
-    headers: dict[str, str] = Field(default_factory=dict)
-
-
-class McpHttpServer(BaseModel):
-    """MCP HTTP server configuration."""
-    type: Literal["http"]
-    url: str
-    headers: dict[str, str] = Field(default_factory=dict)
-
-
-# Union type for all MCP server types
-McpServer = McpStdioServer | McpSseServer | McpHttpServer
 
 
 class ClaudeDesktopConfig(BaseModel):
     """Claude Desktop configuration schema."""
     model_config = ConfigDict(extra='allow')
 
-    mcpServers: dict[str, McpServer] = Field(default_factory=dict)
+    mcpServers: dict[str, McpServerConfig] = Field(default_factory=dict)
     mcpServersDisabled: dict[str, Any] = Field(default_factory=dict)
 
 

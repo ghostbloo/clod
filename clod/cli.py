@@ -4,7 +4,6 @@ from pathlib import Path
 
 import click
 
-from .desktop import ClaudeDesktopParser
 from .desktop_mcp import ClaudeDesktopMcpManager
 from .hooks import HookManager
 from .sfx import SoundEffectsManager, run_tui
@@ -84,7 +83,7 @@ def hooks() -> None:
 
 @main.group()
 def desktop() -> None:
-    """Claude Desktop integration commands (chat history, MCP server management)."""
+    """Claude Desktop integration commands (MCP server management)."""
     pass
 
 
@@ -332,126 +331,6 @@ def edit(identifier: str) -> None:
         click.echo(f"Invalid hook identifier: {identifier}")
 
 
-# Desktop chat history commands
-@desktop.command("list")
-@click.option("--limit", "-n", default=20, help="Number of messages to show")
-@click.option("--conversation", "-c", help="Filter by conversation ID")
-def list_desktop(limit: int, conversation: str | None) -> None:
-    """List recent chat messages."""
-    parser = ClaudeDesktopParser()
-
-    if conversation:
-        conversations = parser.get_conversations()
-        if conversation in conversations:
-            messages = conversations[conversation].messages
-        else:
-            click.echo(f"Conversation '{conversation}' not found.")
-            return
-    else:
-        messages = parser.get_recent_messages(limit)
-
-    if not messages:
-        click.echo("No messages found.")
-        return
-
-    for i, msg in enumerate(messages, 1):
-        status = "📝" if msg.is_draft else "💬"
-        conv_short = (
-            msg.conversation_id[:8]
-            if msg.conversation_id != "unknown"
-            else "unknown"
-        )
-        click.echo(f"{i:2d}. {status} [{conv_short}] {msg.text}")
-
-
-@desktop.command()
-@click.argument("query")
-@click.option("--case-sensitive", "-c", is_flag=True, help="Case sensitive search")
-@click.option("--limit", "-n", default=50, help="Maximum results to show")
-def search(query: str, case_sensitive: bool, limit: int) -> None:
-    """Search chat messages for text."""
-    parser = ClaudeDesktopParser()
-    results = parser.search_messages(query, case_sensitive)
-
-    if not results:
-        click.echo(f"No messages found containing '{query}'.")
-        return
-
-    # Limit results
-    if len(results) > limit:
-        results = results[:limit]
-        click.echo(
-            f"Showing first {limit} of "
-            f"{len(parser.search_messages(query, case_sensitive))} results:"
-        )
-
-    for i, msg in enumerate(results, 1):
-        status = "📝" if msg.is_draft else "💬"
-        conv_short = (
-            msg.conversation_id[:8]
-            if msg.conversation_id != "unknown"
-            else "unknown"
-        )
-
-        # Highlight the search term
-        text = msg.text
-        if not case_sensitive:
-            # Simple highlighting for case-insensitive search
-            import re
-            pattern = re.compile(re.escape(query), re.IGNORECASE)
-            text = pattern.sub(lambda m: f"**{m.group()}**", text)
-        else:
-            text = text.replace(query, f"**{query}**")
-
-        click.echo(f"{i:2d}. {status} [{conv_short}] {text}")
-
-
-@desktop.command()
-def conversations() -> None:
-    """List all conversation IDs."""
-    parser = ClaudeDesktopParser()
-    convs = parser.get_conversations()
-
-    if not convs:
-        click.echo("No conversations found.")
-        return
-
-    click.echo(f"Found {len(convs)} conversations:")
-    for conv_id, conv in convs.items():
-        msg_count = len(conv.messages)
-        click.echo(f"  {conv_id}: {msg_count} messages")
-
-
-@desktop.command()
-@click.option(
-    "--format",
-    "-f",
-    type=click.Choice(["text", "json"]),
-    default="text",
-    help="Output format",
-)
-def export(format: str) -> None:
-    """Export all chat messages."""
-    parser = ClaudeDesktopParser()
-    messages = parser.get_all_messages()
-
-    if format == "json":
-        import json
-        data = []
-        for msg in messages:
-            data.append({
-                "conversation_id": msg.conversation_id,
-                "text": msg.text,
-                "is_draft": msg.is_draft,
-                "message_type": msg.message_type
-            })
-        click.echo(json.dumps(data, indent=2))
-    else:
-        for msg in messages:
-            status = "📝" if msg.is_draft else "💬"
-            click.echo(f"{status} [{msg.conversation_id[:8]}] {msg.text}")
-
-
 @desktop.group()
 def mcp() -> None:
     """MCP server management commands."""
@@ -652,22 +531,48 @@ def mcp_get(name: str) -> None:
         return
 
     click.echo(f"{name}:")
-    click.echo(f"  Type: {server.type}")
+    server_type = server.get("type", "stdio")
+    click.echo(f"  Type: {server_type}")
 
-    if server.type == "stdio":
-        click.echo(f"  Command: {server.command}")
-        if server.args:
-            click.echo(f"  Args: {' '.join(server.args)}")
-        if server.env:
-            click.echo("  Environment:")
-            for key, value in server.env.items():
-                click.echo(f"    {key}={value}")
-    elif server.type in ("sse", "http"):
-        click.echo(f"  URL: {server.url}")
-        if server.headers:
-            click.echo("  Headers:")
-            for key, value in server.headers.items():
-                click.echo(f"    {key}: {value}")
+    if server_type == "stdio":
+        # For stdio servers, we know the structure
+        command = server.get("command")
+        if command:
+            click.echo(f"  Command: {command}")
+
+        args_raw = server.get("args")
+        if args_raw:
+            try:
+                args = list(args_raw)
+                click.echo(f"  Args: {' '.join(args)}")
+            except (TypeError, ValueError):
+                pass
+
+        env_raw = server.get("env")
+        if env_raw:
+            try:
+                env = dict(env_raw)  # type: ignore
+                click.echo("  Environment:")
+                for key, value in env.items():
+                    click.echo(f"    {key}={value}")
+            except (TypeError, ValueError):
+                pass
+
+    elif server_type in ("sse", "http"):
+        # For SSE/HTTP servers, we know the structure
+        url = server.get("url")
+        if url:
+            click.echo(f"  URL: {url}")
+
+        headers_raw = server.get("headers")
+        if headers_raw:
+            try:
+                headers = dict(headers_raw)  # type: ignore
+                click.echo("  Headers:")
+                for key, value in headers.items():
+                    click.echo(f"    {key}: {value}")
+            except (TypeError, ValueError):
+                pass
 
 
 @mcp.command("enable")
