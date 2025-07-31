@@ -8,22 +8,25 @@ import subprocess
 import sys
 
 
-def main():
+def main() -> None:
     try:
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
 
-        if input_data.get('tool_name', '') in ['Write', 'Edit', 'MultiEdit']:
+        if input_data.get("tool_name", "") in ["Write", "Edit", "MultiEdit"]:
             # Run lint script
             try:
                 result = subprocess.run(
-                    ['uv', 'run', 'scripts/lint.py'],
+                    ["uv", "run", "scripts/lint.py"],
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=30,
                 )
                 if result.returncode != 0:
-                    print(f"Linting failed with exit code {result.returncode}:", file=sys.stderr)
+                    print(
+                        f"Linting failed with exit code {result.returncode}:",
+                        file=sys.stderr,
+                    )
                     if result.stdout:
                         print(result.stdout, file=sys.stderr)
                     if result.stderr:
@@ -36,5 +39,6 @@ def main():
     except json.JSONDecodeError:
         sys.exit(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

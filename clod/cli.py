@@ -4,8 +4,10 @@ from pathlib import Path
 
 import click
 
+from .config_models import ClaudeCodeSettings
 from .desktop_mcp import ClaudeDesktopMcpManager
 from .hooks import HookManager
+from .log_parser import find_log_files, get_recent_sessions
 from .sfx import SoundEffectsManager, run_tui
 from .tmux import TmuxController
 
@@ -92,6 +94,18 @@ def desktop() -> None:
 @main.group()
 def sfx() -> None:
     """Sound effects management commands."""
+    pass
+
+
+@main.group()
+def lint() -> None:
+    """Linting and validation commands."""
+    pass
+
+
+@main.group()
+def logs() -> None:
+    """Claude Code log streaming and analysis commands."""
     pass
 
 
@@ -226,20 +240,27 @@ def stop_repl(session: str) -> None:
 
 # Hook management commands
 @hooks.command()
-def list() -> None:
+@click.option(
+    "--scope",
+    "-s",
+    type=click.Choice(["user", "project", "local"]),
+    help="Configuration scope",
+)
+def list(scope: str | None) -> None:
     """List all configured hooks."""
-    manager = HookManager()
+    manager = HookManager(scope=scope)
     hooks = manager.list_hooks()
 
     if not hooks:
-        click.echo("No hooks configured.")
+        scope_info = f" ({scope} scope)" if scope else ""
+        click.echo(f"No hooks configured{scope_info}.")
         return
 
+    scope_info = f" ({scope} scope)" if scope else ""
+    click.echo(f"Configured hooks{scope_info}:")
     for i, hook in enumerate(hooks):
-        status = "✓" if hook["enabled"] else "✗"
         click.echo(
-            f"{i:2d}. {status} {hook['event']:<20} "
-            f"{hook['matcher']:<15} {hook['command']}"
+            f"{i:2d}. {hook['event']:<20} {hook['matcher']:<15} {hook['command']}"
         )
 
 
@@ -247,9 +268,15 @@ def list() -> None:
 @click.argument("hook_type", type=click.Choice(HookManager.HOOK_TYPES))
 @click.option("--matcher", "-m", default="*", help="Tool pattern to match")
 @click.option("--command", "-c", help="Shell command to execute")
-@click.option("--script", "-s", help="Path to existing script")
+@click.option("--script", "-f", help="Path to existing script")
 @click.option("--template", "-t", is_flag=True, help="Create cchooks Python template")
 @click.option("--name", "-n", help="Hook name (for templates)")
+@click.option(
+    "--scope",
+    "-s",
+    type=click.Choice(["user", "project", "local"]),
+    help="Configuration scope",
+)
 def add(
     hook_type: str,
     matcher: str,
@@ -257,9 +284,10 @@ def add(
     script: str | None,
     template: bool,
     name: str | None,
+    scope: str | None,
 ) -> None:
     """Add a new hook."""
-    manager = HookManager()
+    manager = HookManager(scope=scope)
 
     try:
         result = manager.add_hook(
@@ -282,9 +310,15 @@ def add(
 
 @hooks.command()
 @click.argument("identifier")
-def remove(identifier: str) -> None:
+@click.option(
+    "--scope",
+    "-s",
+    type=click.Choice(["user", "project", "local"]),
+    help="Configuration scope",
+)
+def remove(identifier: str, scope: str | None) -> None:
     """Remove a hook by index."""
-    manager = HookManager()
+    manager = HookManager(scope=scope)
 
     if manager.remove_hook(identifier):
         click.echo(f"✓ Removed hook: {identifier}")
@@ -296,20 +330,32 @@ def remove(identifier: str) -> None:
 @click.argument("identifier")
 @click.option("--input", "-i", help="Test input data (JSON)")
 @click.option("--dry-run", "-d", is_flag=True, help="Show what would happen")
-def run(identifier: str, input: str | None, dry_run: bool) -> None:
+@click.option(
+    "--scope",
+    "-s",
+    type=click.Choice(["user", "project", "local"]),
+    help="Configuration scope",
+)
+def run(identifier: str, input: str | None, dry_run: bool, scope: str | None) -> None:
     """Run/test a hook."""
-    manager = HookManager()
+    manager = HookManager(scope=scope)
     manager.run_hook(identifier, input, dry_run)
 
 
 @hooks.command()
 @click.argument("identifier")
-def edit(identifier: str) -> None:
+@click.option(
+    "--scope",
+    "-s",
+    type=click.Choice(["user", "project", "local"]),
+    help="Configuration scope",
+)
+def edit(identifier: str, scope: str | None) -> None:
     """Edit a hook script."""
     import os
     import subprocess
 
-    manager = HookManager()
+    manager = HookManager(scope=scope)
     hooks = manager.list_hooks()
 
     try:
@@ -369,10 +415,10 @@ def mcp_tail(ctx: click.Context, server_name: str) -> None:
         sys.exit(1)
 
 
-@mcp.command()
+@mcp.command("logs")
 @click.argument("server_name")
 @click.option("--lines", "-n", default=50, help="Number of recent log lines to show")
-def logs(server_name: str, lines: int) -> None:
+def mcp_logs(server_name: str, lines: int) -> None:
     """Show recent logs from an MCP server."""
     import os
 
@@ -693,6 +739,277 @@ def sounds() -> None:
     click.echo(f"Available sound files ({len(sound_files)}):")
     for sound_path in sound_files:
         click.echo(f"  {sound_path.name}")
+
+
+# Lint commands
+@lint.command()
+@click.argument("file_path", type=click.Path(exists=True), required=False)
+@click.option(
+    "--stdin", "-", "use_stdin", is_flag=True, help="Read settings from stdin"
+)
+def settings(file_path: str | None, use_stdin: bool) -> None:
+    """Validate a Claude Code settings.json file."""
+    import json
+    import sys
+
+    from pydantic import ValidationError
+
+    # Get JSON content
+    content = None
+    source = "stdin"
+
+    if use_stdin:
+        try:
+            content = sys.stdin.read()
+        except KeyboardInterrupt:
+            click.echo("\nOperation cancelled.", err=True)
+            sys.exit(1)
+    elif file_path:
+        source = file_path
+        try:
+            with Path(file_path).open() as f:
+                content = f.read()
+        except OSError as e:
+            click.echo(f"Error reading file: {e}", err=True)
+            sys.exit(1)
+    else:
+        # Try to find settings.json in common locations
+        possible_paths = [
+            Path.cwd() / ".claude" / "settings.json",
+            Path.cwd() / ".claude" / "settings.local.json",
+            Path.home() / ".claude" / "settings.json",
+        ]
+
+        for path in possible_paths:
+            if path.exists():
+                file_path = str(path)
+                source = file_path
+                try:
+                    with path.open() as f:
+                        content = f.read()
+                    break
+                except OSError as e:
+                    click.echo(f"Error reading {path}: {e}", err=True)
+                    continue
+
+        if not content:
+            click.echo(
+                "No settings file found. Specify a file path or use --stdin.",
+                err=True,
+            )
+            sys.exit(1)
+
+    # Parse JSON
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError as e:
+        click.echo(f"Invalid JSON in {source}: {e}", err=True)
+        sys.exit(1)
+
+    # Validate with Pydantic model
+    try:
+        settings = ClaudeCodeSettings(**data)
+        click.echo(f"✓ Valid Claude Code settings ({source})")
+
+        # Show summary of configured features
+        features = []
+        if settings.model:
+            features.append(f"model: {settings.model}")
+        if settings.permissions:
+            features.append("permissions configured")
+        if settings.hooks:
+            features.append(f"hooks: {', '.join(settings.hooks.keys())}")
+        if settings.env:
+            features.append(f"env vars: {len(settings.env)}")
+        if settings.api_key_helper:
+            features.append("API key helper")
+
+        if features:
+            click.echo("  Configured: " + ", ".join(features))
+
+    except ValidationError as e:
+        click.echo(f"✗ Invalid Claude Code settings ({source}):", err=True)
+        for error in e.errors():
+            loc = ".".join(str(x) for x in error["loc"])
+            msg = error["msg"]
+            click.echo(f"  - {loc}: {msg}", err=True)
+        sys.exit(1)
+
+
+# Log streaming and analysis commands
+@logs.command("stream")
+@click.option("--host", default="localhost", help="Host to bind server to")
+@click.option("--port", type=int, default=8765, help="Port to bind server to")
+@click.option("--debug", is_flag=True, help="Enable debug logging")
+def stream_logs(host: str, port: int, debug: bool) -> None:
+    """Start Claude Code log streaming server."""
+    import asyncio
+    import logging
+
+    from .streaming import run_streaming_server
+
+    # Configure logging
+    level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    click.echo(f"🚀 Starting Claude Code log streaming server on ws://{host}:{port}")
+
+    try:
+        asyncio.run(run_streaming_server(host, port))
+    except KeyboardInterrupt:
+        click.echo("\n👋 Server stopped by user")
+
+
+@logs.command("recent")
+@click.option("--limit", "-n", default=5, help="Number of recent sessions to show")
+@click.option(
+    "--detailed", "-d", is_flag=True, help="Show detailed session information"
+)
+def recent_logs(limit: int, detailed: bool) -> None:
+    """Show recent Claude Code sessions."""
+    try:
+        sessions = get_recent_sessions(limit)
+
+        if not sessions:
+            click.echo("No Claude Code sessions found.")
+            return
+
+        click.echo(f"📊 {len(sessions)} recent Claude Code sessions:")
+        click.echo()
+
+        for i, session in enumerate(sessions, 1):
+            duration_str = ""
+            if session.start_time and session.end_time:
+                duration = session.end_time - session.start_time
+                duration_str = f" (Duration: {duration})"
+
+            click.echo(f"{i}. Session {session.session_id[:8]}...{duration_str}")
+
+            if session.start_time:
+                click.echo(f"   📅 Started: {session.start_time}")
+
+            conversation = session.get_conversation_thread()
+            click.echo(
+                f"   💬 Messages: {len(session.user_messages)} user, "
+                f"{len(session.assistant_messages)} assistant"
+            )
+
+            if detailed and conversation:
+                # Show first few exchanges
+                click.echo("   📝 Recent conversation:")
+                for entry in conversation[:3]:
+                    if entry.message is None:
+                        continue
+                    role = entry.message.role.upper()
+                    content = ""
+
+                    if isinstance(entry.message.content, str):
+                        content = entry.message.content[:60]
+                    elif hasattr(entry.message, "content") and hasattr(
+                        entry.message.content, "__iter__"
+                    ):
+                        for block in entry.message.content:
+                            if hasattr(block, "text"):
+                                content = block.text[:60]
+                                break
+                            elif hasattr(block, "name"):
+                                content = f"[Tool: {block.name}]"
+                                break
+
+                    click.echo(f"      {role}: {content}...")
+
+            click.echo()
+
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+
+
+@logs.command("stats")
+def log_stats() -> None:
+    """Show Claude Code log statistics."""
+    try:
+        log_files = find_log_files()
+        sessions = get_recent_sessions(limit=50)  # Analyze more sessions for stats
+
+        if not sessions:
+            click.echo("No Claude Code sessions found.")
+            return
+
+        # Calculate statistics
+        total_entries = sum(len(s.entries) for s in sessions)
+        total_user_msgs = sum(len(s.user_messages) for s in sessions)
+        total_assistant_msgs = sum(len(s.assistant_messages) for s in sessions)
+
+        # Count tool usage
+        tool_uses = 0
+        tools_used = set()
+
+        for session in sessions:
+            for entry in session.entries:
+                if (
+                    entry.message
+                    and hasattr(entry.message, "content")
+                    and hasattr(entry.message.content, "__iter__")
+                    and not isinstance(entry.message.content, str)
+                ):
+                    for block in entry.message.content:
+                        if hasattr(block, "name"):  # ToolUseContentBlock
+                            tool_uses += 1
+                            tools_used.add(block.name)
+
+        # Find most active session
+        most_active = (
+            max(sessions, key=lambda s: len(s.get_conversation_thread()))
+            if sessions
+            else None
+        )
+
+        click.echo("📊 Claude Code Log Statistics")
+        click.echo("=" * 35)
+        click.echo(f"📁 Total log files: {len(log_files)}")
+        click.echo(f"📋 Analyzed sessions: {len(sessions)}")
+        click.echo(f"📝 Total log entries: {total_entries}")
+        click.echo(f"👤 User messages: {total_user_msgs}")
+        click.echo(f"🤖 Assistant messages: {total_assistant_msgs}")
+        click.echo(f"🛠️  Tool executions: {tool_uses}")
+
+        if tools_used:
+            click.echo(f"🔧 Unique tools used: {', '.join(sorted(tools_used))}")
+
+        if most_active:
+            active_count = len(most_active.get_conversation_thread())
+            click.echo(
+                f"🏆 Most active session: {most_active.session_id[:8]}... "
+                f"({active_count} messages)"
+            )
+
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+
+
+@logs.command("client")
+@click.argument("uri", default="ws://localhost:8765")
+def log_client(uri: str) -> None:
+    """Connect to Claude Code log streaming server."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    # Run the example client
+    client_path = Path(__file__).parent.parent / "examples" / "streaming_client.py"
+
+    if not client_path.exists():
+        click.echo(
+            "❌ Streaming client not found. Install examples manually.", err=True
+        )
+        return
+
+    try:
+        subprocess.run([sys.executable, str(client_path), uri])
+    except KeyboardInterrupt:
+        click.echo("\n👋 Client stopped by user")
 
 
 if __name__ == "__main__":

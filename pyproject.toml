@@ -30,6 +30,8 @@ dependencies = [
     "click>=8.0.0",
     "pydantic>=2.11.7",
     "textual>=0.82.0",
+    "websockets>=13.0.0",
+    "watchdog>=5.0.0",
 ]
 
 [project.scripts]

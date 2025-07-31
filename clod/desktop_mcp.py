@@ -9,7 +9,7 @@ from claude_code_sdk import McpServerConfig
 if TYPE_CHECKING:
     from claude_code_sdk.types import McpStdioServerConfig
 
-from .models import ClaudeDesktopConfig
+from .config_models import ClaudeDesktopConfig
 
 
 class ClaudeDesktopMcpManager:
