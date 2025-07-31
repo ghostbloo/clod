@@ -21,8 +21,21 @@ class HookManager:
         "pre-compact",
     ]
 
-    def __init__(self, settings_path: Path | None = None) -> None:
-        self.settings_path = settings_path or Path.home() / ".claude" / "settings.json"
+    SCOPE_PATHS: ClassVar[dict[str, str]] = {
+        "user": "~/.claude/settings.json",
+        "project": "./.claude/settings.json",
+        "local": "./.claude/settings.local.json",
+    }
+
+    def __init__(
+        self, settings_path: Path | None = None, scope: str | None = None
+    ) -> None:
+        if scope and scope in self.SCOPE_PATHS:
+            self.settings_path = Path(self.SCOPE_PATHS[scope]).expanduser().resolve()
+        else:
+            self.settings_path = (
+                settings_path or Path.home() / ".claude" / "settings.json"
+            )
         self.hooks_dir = Path.home() / ".claude" / "hooks"
         self.hooks_dir.mkdir(parents=True, exist_ok=True)
 
@@ -60,7 +73,6 @@ class HookManager:
                             "matcher": matcher,
                             "type": hook.get("type", "command"),
                             "command": hook.get("command", ""),
-                            "enabled": hook.get("enabled", True),
                         }
                     )
 
@@ -114,7 +126,7 @@ class HookManager:
             matcher_config = {"matcher": matcher, "hooks": []}
             event_hooks.append(matcher_config)
 
-        hook_config = {"type": "command", "command": final_command, "enabled": True}
+        hook_config = {"type": "command", "command": final_command}
 
         matcher_config["hooks"].append(hook_config)
         self._save_settings(settings)
