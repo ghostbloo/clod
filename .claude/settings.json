@@ -1,34 +1,12 @@
 {
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run .claude/hooks/post_write_lint.py"
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo test",
-            "enabled": true
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "python /Users/me/.claude/hooks/auto_format.py",
-            "enabled": true
+            "command": "uv run --with cchooks python /Users/me/code/ai/clod/.claude/hooks/auto_format.py"
           }
         ]
       }
