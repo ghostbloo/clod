@@ -58,7 +58,7 @@ wheels = [
 ]
 
 [[package]]
-name = "clod"
+name = "clodd"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

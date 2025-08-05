@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "clod"
+name = "clodd"
 version = "1.0.0"
 description = "Claude utilities and hacks"
 readme = "README.md"
@@ -36,6 +36,9 @@ dependencies = [
 
 [project.scripts]
 clod = "clod.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["clod"]
 
 [tool.uv]
 package = true
