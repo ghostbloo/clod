@@ -358,7 +358,7 @@ class SoundEffectsTUI(App):
 
         # Create hooks list - include common hook+matcher combinations
         self.hooks_list = []
-        common_matchers = ["*", "", "Bash", "Edit", "Write", "Task", "Grep|Glob|LS"]
+        common_matchers = ["*", "Bash", "Edit", "Write", "Task", "Grep|Glob|LS"]
 
         for hook_type in self.manager.HOOK_TYPES:
             for matcher in common_matchers:

@@ -17,7 +17,7 @@ print(f"🔧 Auto-format hook starting at {Path.cwd()}", file=sys.stderr)
 
 # Write execution log to temp file for verification
 log_file = Path(tempfile.gettempdir()) / "claude_auto_format_hook.log"
-with open(log_file, "a") as f:
+with log_file.open("a") as f:
     f.write(f"{datetime.datetime.now().isoformat()} - Hook executed in {Path.cwd()}\n")
 print(f"📝 Logged execution to {log_file}", file=sys.stderr)
 
@@ -35,7 +35,10 @@ except Exception as e:
 try:
     # Check if we're in a project with format script
     format_script = Path("scripts/format.py")
-    print(f"🔍 Checking for format script at {format_script.absolute()}", file=sys.stderr)
+    print(
+        f"🔍 Checking for format script at {format_script.absolute()}",
+        file=sys.stderr,
+    )
 
     if format_script.exists():
         print("🎨 Running auto-format on stop...", file=sys.stderr)
@@ -68,7 +71,9 @@ try:
 
         # Format first
         print("🏃 Running: ruff format .", file=sys.stderr)
-        format_result = subprocess.run(["ruff", "format", "."], capture_output=True, text=True)
+        format_result = subprocess.run(
+            ["ruff", "format", "."], capture_output=True, text=True
+        )
         print(f"📊 ruff format exit code: {format_result.returncode}", file=sys.stderr)
         if format_result.stdout:
             print(f"📤 format stdout: {format_result.stdout}", file=sys.stderr)
@@ -77,7 +82,9 @@ try:
 
         # Then check and fix
         print("🏃 Running: ruff check --fix .", file=sys.stderr)
-        check_result = subprocess.run(["ruff", "check", "--fix", "."], capture_output=True, text=True)
+        check_result = subprocess.run(
+            ["ruff", "check", "--fix", "."], capture_output=True, text=True
+        )
         print(f"📊 ruff check exit code: {check_result.returncode}", file=sys.stderr)
         if check_result.stdout:
             print(f"📤 check stdout: {check_result.stdout}", file=sys.stderr)
@@ -88,13 +95,20 @@ try:
             print("✅ Auto-format and lint completed", file=sys.stderr)
         else:
             if format_result.returncode != 0:
-                print(f"⚠️  Format issues (exit code {format_result.returncode})", file=sys.stderr)
+                print(
+                    f"⚠️  Format issues (exit code {format_result.returncode})",
+                    file=sys.stderr,
+                )
             if check_result.returncode != 0:
-                print(f"⚠️  Lint issues (exit code {check_result.returncode})", file=sys.stderr)
+                print(
+                    f"⚠️  Lint issues (exit code {check_result.returncode})",
+                    file=sys.stderr,
+                )
 
 except Exception as e:
     print(f"❌ Auto-format error: {e}", file=sys.stderr)
     import traceback
+
     print(f"🔍 Traceback: {traceback.format_exc()}", file=sys.stderr)
 
 # Always approve - formatting shouldn't block Claude Code from stopping
