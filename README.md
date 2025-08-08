@@ -8,7 +8,12 @@ CLI for enhancing Claude Code & Desktop with various utilities & toys.
 - tmux configurations (WIP)
 - probably other stuff I forgot about
 
-## Setup
+## Install
+1. `uv tool install clodd`
+2. run `clod`
+3. should work probably lol
+
+## Development
 1. Clone the repo.
 2. Run `uv venv`, `uv sync`, and `source .venv/bin/activate`.
 3. Run `clod --help` for a list of commands.
