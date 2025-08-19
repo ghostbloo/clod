@@ -99,10 +99,6 @@ def sfx() -> None:
     pass
 
 
-@main.group()
-def packs() -> None:
-    """Sound pack management commands."""
-    pass
 
 
 @main.group()
@@ -1021,7 +1017,7 @@ def log_client(uri: str) -> None:
 
 
 # Sound pack management commands
-@packs.command("install")
+@sfx.command("install")
 @click.argument("pack_path", type=click.Path(exists=True, path_type=Path))
 @click.option("--name", "-n", help="Override pack name")
 def install_pack(pack_path: Path, name: str | None) -> None:
@@ -1039,7 +1035,7 @@ def install_pack(pack_path: Path, name: str | None) -> None:
         click.echo(f"✗ Error installing pack: {e}", err=True)
 
 
-@packs.command("list")
+@sfx.command("list-packs")
 def list_packs() -> None:
     """List all installed sound packs."""
     manager = SoundPackManager()
@@ -1060,7 +1056,7 @@ def list_packs() -> None:
         click.echo()
 
 
-@packs.command("enable-claude")
+@sfx.command("enable-claude")
 @click.argument("pack_name")
 @click.option("--matcher", "-m", default="*", help="Tool pattern to match")
 def enable_claude(pack_name: str, matcher: str) -> None:
@@ -1073,7 +1069,7 @@ def enable_claude(pack_name: str, matcher: str) -> None:
         click.echo(f"✗ Failed to enable pack '{pack_name}' for Claude Code", err=True)
 
 
-@packs.command("enable-opencode") 
+@sfx.command("enable-opencode") 
 @click.argument("pack_name")
 def enable_opencode(pack_name: str) -> None:
     """Enable sound pack for Opencode."""
@@ -1086,7 +1082,7 @@ def enable_opencode(pack_name: str) -> None:
         click.echo(f"✗ Failed to enable pack '{pack_name}' for Opencode", err=True)
 
 
-@packs.command("disable-claude")
+@sfx.command("disable-claude")
 @click.argument("pack_name")
 def disable_claude(pack_name: str) -> None:
     """Disable sound pack for Claude Code."""
@@ -1098,7 +1094,7 @@ def disable_claude(pack_name: str) -> None:
         click.echo(f"✗ Failed to disable pack '{pack_name}' for Claude Code", err=True)
 
 
-@packs.command("disable-opencode")
+@sfx.command("disable-opencode")
 @click.argument("pack_name") 
 def disable_opencode(pack_name: str) -> None:
     """Disable sound pack for Opencode."""
@@ -1110,7 +1106,7 @@ def disable_opencode(pack_name: str) -> None:
         click.echo(f"✗ Failed to disable pack '{pack_name}' for Opencode", err=True)
 
 
-@packs.command("uninstall")
+@sfx.command("uninstall")
 @click.argument("pack_name")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
 def uninstall_pack(pack_name: str, yes: bool) -> None:
@@ -1131,7 +1127,7 @@ def uninstall_pack(pack_name: str, yes: bool) -> None:
         click.echo(f"✗ Failed to uninstall pack '{pack_name}'", err=True)
 
 
-@packs.command("info")
+@sfx.command("info")
 @click.argument("pack_name")
 def pack_info(pack_name: str) -> None:
     """Show detailed information about a sound pack."""
@@ -1164,7 +1160,7 @@ def pack_info(pack_name: str) -> None:
         click.echo(f"  {opencode_event} -> {claude_event}")
 
 
-@packs.command("create-example")
+@sfx.command("create-example")
 @click.argument("output_dir", type=click.Path(path_type=Path))
 def create_example_pack(output_dir: Path) -> None:
     """Create an example sound pack template."""
@@ -1208,7 +1204,7 @@ def create_example_pack(output_dir: Path) -> None:
     click.echo(f"✓ Created example sound pack in {output_dir}")
     click.echo("  - Edit sounds.json to configure events")
     click.echo("  - Replace .wav files with actual sound files")
-    click.echo("  - Install with: clod packs install /path/to/pack")
+    click.echo("  - Install with: clod sfx install /path/to/pack")
 
 
 if __name__ == "__main__":
