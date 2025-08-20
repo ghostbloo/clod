@@ -1,0 +1,12 @@
+{
+  "name": "sfx",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@opencode-ai/plugin": "^0.4.26"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.20"
+  }
+}

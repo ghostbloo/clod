@@ -1,0 +1,13 @@
+{
+  "extends": "@opencode-ai/plugin/tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["plugin/**/*.ts"],
+  "exclude": ["node_modules"]
+}
