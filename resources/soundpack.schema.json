@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unified Sound Pack",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "number" },
+    "baseDir": { "type": "string", "default": "~/.claude/sounds" },
+    "opencode": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "properties": { "path": { "type": "string" } },
+                "required": ["path"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "hooks": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "properties": { "path": { "type": "string" } },
+                "required": ["path"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "claude": {
+      "type": "object",
+      "description": "Map of Claude hook type to matcher map",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": { "path": { "type": "string" } },
+              "required": ["path"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
+

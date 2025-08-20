@@ -1,0 +1,44 @@
+{
+  "$schema": "./clod/resources/soundpack.schema.json",
+  "version": 1,
+  "baseDir": "~/.claude/sounds",
+  "opencode": {
+    "events": {
+      "session.idle": "mew.wav",
+      "session.error": { "path": "uhoh.wav" },
+      "file.edited": "pencil_eraser_select.wav"
+    },
+    "hooks": {
+      "chat.message": "notif.wav",
+      "permission.ask": "phone.wav",
+      "tool.execute.before": "menu1.wav",
+      "tool.execute.after": "ok.wav"
+    }
+  },
+  "claude": {
+    "PreToolUse": {
+      "Bash": "chao5.WAV",
+      "Edit": "pencil_eraser_select.wav",
+      "Grep|Glob|LS": "chao5.WAV",
+      "exit_plan_mode": "whistle2.WAV"
+    },
+    "PostToolUse": {
+      "Task": "splat.mp3",
+      "Write": "ya.wav"
+    },
+    "Notification": {
+      "": "notif.wav"
+    },
+    "Stop": {
+      "": "mew.wav"
+    },
+    "SubagentStop": {
+      "": "STRM_GB02_FURURU_E.wav"
+    },
+    "PreCompact": {
+      "auto": { "path": "Animal 13.wav" }
+    }
+  }
+}
+
+

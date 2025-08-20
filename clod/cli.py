@@ -1,6 +1,7 @@
 """CLI interface for clod utilities."""
 
 from pathlib import Path
+import json
 
 import click
 
@@ -9,6 +10,7 @@ from .desktop_mcp import ClaudeDesktopMcpManager
 from .hooks import HookManager
 from .log_parser import find_log_files, get_recent_sessions
 from .sfx import SoundEffectsManager, run_tui
+from .soundpack import apply_pack_to_claude_settings, generate_claude_hooks, load_soundpack_from_paths
 from .tmux import TmuxController
 
 
@@ -740,6 +742,39 @@ def sounds() -> None:
     for sound_path in sound_files:
         click.echo(f"  {sound_path.name}")
 
+
+@sfx.command("apply-pack")
+@click.argument("pack_path", type=click.Path(exists=True, path_type=Path))
+def apply_pack(pack_path: Path) -> None:
+    """Apply a unified sound pack JSON to Claude settings."""
+    pack = load_soundpack_from_paths([pack_path])
+    if not pack:
+        click.echo("✗ Failed to load sound pack", err=True)
+        return
+
+    summary = apply_pack_to_claude_settings(pack)
+
+    if summary["applied"]:
+        click.echo("✓ Applied:")
+        for item in summary["applied"]:
+            click.echo(f"  {item}")
+    if summary["failed"]:
+        click.echo("✗ Failed:")
+        for item in summary["failed"]:
+            click.echo(f"  {item}")
+
+
+@sfx.command("pack-to-claude-settings")
+@click.argument("pack_path", type=click.Path(exists=True, path_type=Path))
+def pack_to_claude_settings(pack_path: Path) -> None:
+    """Generate a Claude-compatible hooks JSON from a unified sound pack."""
+    pack = load_soundpack_from_paths([pack_path])
+    if not pack:
+        click.echo("✗ Failed to load sound pack", err=True)
+        return
+
+    hooks = generate_claude_hooks(pack)
+    click.echo(json.dumps({"hooks": hooks}, indent=2))
 
 # Lint commands
 @lint.command()
