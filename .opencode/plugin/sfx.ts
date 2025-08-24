@@ -14,7 +14,7 @@ const soundConfig: SoundConfig = {
 
 export const MyPlugin: Plugin = async ({ app, client, $ }) => {
   const playSound = async (path: string) => {
-    await $`afplay ${path} &`.quiet();
+    await $`clod sfx play ${path}`.quiet();
   }
 
   return {
