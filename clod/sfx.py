@@ -4,8 +4,9 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, get_args
 
+from cchooks.types import HookEventType
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Container
@@ -84,15 +85,7 @@ class SoundPlayer:
 class SoundEffectsManager:
     """Manages Claude Code sound effects configuration."""
 
-    HOOK_TYPES: ClassVar[list[str]] = [
-        "PreToolUse",
-        "PostToolUse",
-        "Notification",
-        "Stop",
-        "SubagentStop",
-        "UserPromptSubmit",
-        "PreCompact",
-    ]
+    HOOK_TYPES: ClassVar[list[str]] = list(get_args(HookEventType))
 
     def __init__(
         self, settings_path: Path | None = None, sounds_path: Path | None = None
@@ -182,6 +175,9 @@ class SoundEffectsManager:
 
     def set_sound_mapping(self, hook_type: str, matcher: str, sound_file: str) -> bool:
         """Set sound mapping for a hook type and matcher."""
+        # Validate hook_type is a valid HookEventType
+        if hook_type not in self.HOOK_TYPES:
+            return False
         settings = self._load_settings()
         hooks_config = settings.setdefault("hooks", {})
 

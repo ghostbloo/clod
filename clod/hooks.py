@@ -11,16 +11,6 @@ import click
 class HookManager:
     """Manages Claude Code hooks."""
 
-    HOOK_TYPES: ClassVar[list[str]] = [
-        "pre-tool-use",
-        "post-tool-use",
-        "notification",
-        "stop",
-        "subagent-stop",
-        "user-prompt-submit",
-        "pre-compact",
-    ]
-
     SCOPE_PATHS: ClassVar[dict[str, str]] = {
         "user": "~/.claude/settings.json",
         "project": "./.claude/settings.json",
@@ -80,7 +70,7 @@ class HookManager:
 
     def add_hook(
         self,
-        hook_type: str,
+        hook_type: str,  # Should be a valid HookEventType value
         matcher: str,
         command: str | None = None,
         script_path: str | None = None,
@@ -88,10 +78,6 @@ class HookManager:
         name: str | None = None,
     ) -> str:
         """Add a new hook."""
-        if hook_type not in self.HOOK_TYPES:
-            msg = f"Invalid hook type. Must be one of: {', '.join(self.HOOK_TYPES)}"
-            raise ValueError(msg)
-
         settings = self._load_settings()
         hooks_config = settings.setdefault("hooks", {})
 
@@ -102,7 +88,14 @@ class HookManager:
             # Create cchooks Python template
             if not name:
                 event_hooks_count = len(hooks_config.get(event_name, []))
-                name = f"{hook_type.replace('-', '_')}_{event_hooks_count}"
+                # Convert PascalCase to snake_case for name
+                name_base = "".join(
+                    [
+                        "_" + c.lower() if c.isupper() and i > 0 else c.lower()
+                        for i, c in enumerate(hook_type)
+                    ]
+                )
+                name = f"{name_base}_{event_hooks_count}"
 
             script_path = self._create_template(hook_type, name)
             command = f"python {script_path}"
@@ -223,13 +216,15 @@ class HookManager:
 
         # Convert hook type to context class name
         context_map = {
-            "pre-tool-use": "PreToolUseContext",
-            "post-tool-use": "PostToolUseContext",
-            "notification": "NotificationContext",
-            "stop": "StopContext",
-            "subagent-stop": "SubagentStopContext",
-            "user-prompt-submit": "UserPromptSubmitContext",
-            "pre-compact": "PreCompactContext",
+            "PreToolUse": "PreToolUseContext",
+            "PostToolUse": "PostToolUseContext",
+            "Notification": "NotificationContext",
+            "Stop": "StopContext",
+            "SubagentStop": "SubagentStopContext",
+            "UserPromptSubmit": "UserPromptSubmitContext",
+            "PreCompact": "PreCompactContext",
+            "SessionStart": "SessionStartContext",
+            "SessionEnd": "SessionEndContext",
         }
 
         context_class = context_map.get(hook_type, "PreToolUseContext")
