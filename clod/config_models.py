@@ -1,8 +1,9 @@
 """Pydantic models for clod package."""
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
+from cchooks.types import HookEventType
 from claude_code_sdk import McpServerConfig
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -167,15 +168,7 @@ class ClaudeCodeSettings(BaseModel):
         cls, v: dict[str, list[ClaudeCodeHookMatcher]]
     ) -> dict[str, list[ClaudeCodeHookMatcher]]:
         """Validate hooks configuration."""
-        valid_hook_types = [
-            "PreToolUse",
-            "PostToolUse",
-            "UserPromptSubmit",
-            "AssistantResponseGenerated",
-            "ConversationDeleted",
-            "ConversationContinued",
-            "ConversationCreated",
-        ]
+        valid_hook_types = list(get_args(HookEventType))
         for hook_type in v:
             if hook_type not in valid_hook_types:
                 raise ValueError(

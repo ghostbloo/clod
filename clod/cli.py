@@ -2,8 +2,10 @@
 
 import json
 from pathlib import Path
+from typing import get_args
 
 import click
+from cchooks.types import HookEventType
 
 from .config_models import ClaudeCodeSettings
 from .desktop_mcp import ClaudeDesktopMcpManager
@@ -97,8 +99,6 @@ def desktop() -> None:
 def sfx() -> None:
     """Sound effects management commands."""
     pass
-
-
 
 
 @main.group()
@@ -269,7 +269,7 @@ def list(scope: str | None) -> None:
 
 
 @hooks.command()
-@click.argument("hook_type", type=click.Choice(HookManager.HOOK_TYPES))
+@click.argument("hook_type", type=click.Choice(get_args(HookEventType)))
 @click.option("--matcher", "-m", default="*", help="Tool pattern to match")
 @click.option("--command", "-c", help="Shell command to execute")
 @click.option("--script", "-f", help="Path to existing script")
@@ -282,7 +282,7 @@ def list(scope: str | None) -> None:
     help="Configuration scope",
 )
 def add(
-    hook_type: str,
+    hook_type: str,  # Will be one of the HookEventType values
     matcher: str,
     command: str | None,
     script: str | None,
@@ -607,7 +607,7 @@ def mcp_get(name: str) -> None:
         env_raw = server.get("env")
         if env_raw:
             try:
-                env = dict(env_raw)  # type: ignore
+                env = dict(env_raw)
                 click.echo("  Environment:")
                 for key, value in env.items():
                     click.echo(f"    {key}={value}")
@@ -623,7 +623,7 @@ def mcp_get(name: str) -> None:
         headers_raw = server.get("headers")
         if headers_raw:
             try:
-                headers = dict(headers_raw)  # type: ignore
+                headers = dict(headers_raw)
                 click.echo("  Headers:")
                 for key, value in headers.items():
                     click.echo(f"    {key}: {value}")
@@ -1023,7 +1023,7 @@ def log_client(uri: str) -> None:
 def install_pack(pack_path: Path, name: str | None) -> None:
     """Install a sound pack from zip or directory."""
     manager = SoundPackManager()
-    
+
     try:
         success = manager.install_pack(pack_path, name)
         if success:
@@ -1040,17 +1040,17 @@ def list_packs() -> None:
     """List all installed sound packs."""
     manager = SoundPackManager()
     packs = manager.list_installed_packs()
-    
+
     if not packs:
         click.echo("No sound packs installed.")
         return
-    
+
     click.echo(f"Installed sound packs ({len(packs)}):")
     for pack in packs:
         click.echo(f"  {pack['name']} v{pack['version']}")
-        if pack['description']:
+        if pack["description"]:
             click.echo(f"    {pack['description']}")
-        if pack['author']:
+        if pack["author"]:
             click.echo(f"    Author: {pack['author']}")
         click.echo(f"    Location: {pack['pack_dir']}")
         click.echo()
@@ -1062,19 +1062,19 @@ def list_packs() -> None:
 def enable_claude(pack_name: str, matcher: str) -> None:
     """Enable sound pack for Claude Code."""
     manager = SoundPackManager()
-    
+
     if manager.enable_for_claude_code(pack_name, matcher):
         click.echo(f"✓ Enabled sound pack '{pack_name}' for Claude Code")
     else:
         click.echo(f"✗ Failed to enable pack '{pack_name}' for Claude Code", err=True)
 
 
-@sfx.command("enable-opencode") 
+@sfx.command("enable-opencode")
 @click.argument("pack_name")
 def enable_opencode(pack_name: str) -> None:
     """Enable sound pack for Opencode."""
     manager = SoundPackManager()
-    
+
     if manager.enable_for_opencode(pack_name):
         click.echo(f"✓ Enabled sound pack '{pack_name}' for Opencode")
         click.echo(f"  Plugin created in ~/.opencode/plugin/clod-sounds-{pack_name}.js")
@@ -1087,7 +1087,7 @@ def enable_opencode(pack_name: str) -> None:
 def disable_claude(pack_name: str) -> None:
     """Disable sound pack for Claude Code."""
     manager = SoundPackManager()
-    
+
     if manager.disable_for_claude_code(pack_name):
         click.echo(f"✓ Disabled sound pack '{pack_name}' for Claude Code")
     else:
@@ -1095,11 +1095,11 @@ def disable_claude(pack_name: str) -> None:
 
 
 @sfx.command("disable-opencode")
-@click.argument("pack_name") 
+@click.argument("pack_name")
 def disable_opencode(pack_name: str) -> None:
     """Disable sound pack for Opencode."""
     manager = SoundPackManager()
-    
+
     if manager.disable_for_opencode(pack_name):
         click.echo(f"✓ Disabled sound pack '{pack_name}' for Opencode")
     else:
@@ -1112,15 +1112,15 @@ def disable_opencode(pack_name: str) -> None:
 def uninstall_pack(pack_name: str, yes: bool) -> None:
     """Uninstall a sound pack completely."""
     manager = SoundPackManager()
-    
+
     # Check if pack exists
     if not manager.get_pack_schema(pack_name):
         click.echo(f"✗ Sound pack '{pack_name}' not found", err=True)
         return
-    
+
     if not yes:
         click.confirm(f"Uninstall sound pack '{pack_name}'?", abort=True)
-    
+
     if manager.uninstall_pack(pack_name):
         click.echo(f"✓ Uninstalled sound pack '{pack_name}'")
     else:
@@ -1133,11 +1133,11 @@ def pack_info(pack_name: str) -> None:
     """Show detailed information about a sound pack."""
     manager = SoundPackManager()
     pack_schema = manager.get_pack_schema(pack_name)
-    
+
     if not pack_schema:
         click.echo(f"✗ Sound pack '{pack_name}' not found", err=True)
         return
-    
+
     click.echo(f"Sound Pack: {pack_schema.name}")
     click.echo(f"Version: {pack_schema.version}")
     if pack_schema.description:
@@ -1146,16 +1146,18 @@ def pack_info(pack_name: str) -> None:
         click.echo(f"Author: {pack_schema.author}")
     if pack_schema.tags:
         click.echo(f"Tags: {', '.join(pack_schema.tags)}")
-    
+
     click.echo(f"\nSound Events ({len(pack_schema.events)}):")
     for event_name, event_config in pack_schema.events.items():
         status = "✓" if event_config.enabled else "✗"
-        volume_info = f" (volume: {event_config.volume})" if event_config.volume != 1.0 else ""
+        volume_info = (
+            f" (volume: {event_config.volume})" if event_config.volume != 1.0 else ""
+        )
         click.echo(f"  {status} {event_name}: {event_config.sound_file}{volume_info}")
-    
+
     # Show Claude Code mapping
     click.echo("\nClaude Code Event Mapping:")
-    for opencode_event in pack_schema.events.keys():
+    for opencode_event in pack_schema.events:
         claude_event = manager.REVERSE_EVENT_MAPPING.get(opencode_event, "No mapping")
         click.echo(f"  {opencode_event} -> {claude_event}")
 
@@ -1165,11 +1167,11 @@ def pack_info(pack_name: str) -> None:
 def create_example_pack(output_dir: Path) -> None:
     """Create an example sound pack template."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create example sounds.json
     example_schema = {
         "name": "Example Sound Pack",
-        "version": "1.0.0", 
+        "version": "1.0.0",
         "description": "An example sound pack demonstrating the schema",
         "author": "Your Name",
         "tags": ["example", "demo"],
@@ -1177,30 +1179,26 @@ def create_example_pack(output_dir: Path) -> None:
             "tool.execute.before": {
                 "sound_file": "start.wav",
                 "enabled": True,
-                "volume": 0.8
+                "volume": 0.8,
             },
             "tool.execute.after": {
-                "sound_file": "complete.wav", 
+                "sound_file": "complete.wav",
                 "enabled": True,
-                "volume": 1.0
+                "volume": 1.0,
             },
-            "session.idle": {
-                "sound_file": "idle.wav",
-                "enabled": False,
-                "volume": 0.5
-            }
-        }
+            "session.idle": {"sound_file": "idle.wav", "enabled": False, "volume": 0.5},
+        },
     }
-    
+
     sounds_json = output_dir / "sounds.json"
     with sounds_json.open("w") as f:
         json.dump(example_schema, f, indent=2)
-    
+
     # Create example sound files (just placeholder files)
     for event_config in example_schema["events"].values():
-        sound_file = output_dir / event_config["sound_file"] 
+        sound_file = output_dir / event_config["sound_file"]
         sound_file.touch()
-    
+
     click.echo(f"✓ Created example sound pack in {output_dir}")
     click.echo("  - Edit sounds.json to configure events")
     click.echo("  - Replace .wav files with actual sound files")
