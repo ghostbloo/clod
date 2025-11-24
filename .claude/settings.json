@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --with cchooks python /Users/me/code/ai/clod/.claude/hooks/auto_format.py"
+            "command": "uv run --with cchooks python .claude/hooks/auto_format.py"
           }
         ]
       }
