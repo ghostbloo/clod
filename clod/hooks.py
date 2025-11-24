@@ -19,6 +19,8 @@ class HookManager:
         "subagent-stop",
         "user-prompt-submit",
         "pre-compact",
+        "session-start",
+        "session-end",
     ]
 
     SCOPE_PATHS: ClassVar[dict[str, str]] = {
@@ -230,6 +232,8 @@ class HookManager:
             "subagent-stop": "SubagentStopContext",
             "user-prompt-submit": "UserPromptSubmitContext",
             "pre-compact": "PreCompactContext",
+            "session-start": "SessionStartContext",
+            "session-end": "SessionEndContext",
         }
 
         context_class = context_map.get(hook_type, "PreToolUseContext")

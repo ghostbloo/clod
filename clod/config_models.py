@@ -171,10 +171,13 @@ class ClaudeCodeSettings(BaseModel):
             "PreToolUse",
             "PostToolUse",
             "UserPromptSubmit",
-            "AssistantResponseGenerated",
-            "ConversationDeleted",
-            "ConversationContinued",
-            "ConversationCreated",
+            "Notification",
+            "Stop",
+            "SubagentStop",
+            "PreCompact",
+            "SessionStart",
+            "SessionEnd",
+            "PermissionRequest",
         ]
         for hook_type in v:
             if hook_type not in valid_hook_types:
