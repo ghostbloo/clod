@@ -1,15 +1,2 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --with cchooks python .claude/hooks/auto_format.py"
-          }
-        ]
-      }
-    ]
-  }
 }
