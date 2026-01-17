@@ -1,4 +1,10 @@
 # clod
+
+This project's mostly abandoned, you can copy the sound effect hooks if you want those.
+See also: [claudejob](https://github.com/ghostbloo/claudejob) for haptic hooks!
+
+---
+
 CLI for enhancing Claude Code & Desktop with various utilities & toys.
 
 ## Features
